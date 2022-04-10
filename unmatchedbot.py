@@ -26,9 +26,19 @@ def get_card_description(card):
     return 'Scheme'
   return f"{card['type'].title()} {card['value']}"
 
-def get_deck_description(deck):
+def get_deck_specifics(deck):
   return f"{deck['characterName']} Boost {deck['boost']} ×{deck['quantity']}"
 
+def get_deck_link(deck):
+  return f"[{deck['name']}](https://unmatched.cards/umdb/decks/{deck['slug']})"
+
+def get_other_decks(decks):
+  if len(decks) > 1:
+    other_decks = f"This card appears in {len(decks)} decks: {', '.join([deck['name'] for deck in sorted(decks, key=lambda x: x['name'])])}"
+  else:
+    other_decks = "This card is currently unique to this deck."
+  return other_decks
+  
 def get_colour(card):
   first_letter = card['type'][0].lower()
   color_map = {
@@ -57,13 +67,10 @@ def make_card_embed(card):
         fields.append(interactions.EmbedField(name="Notes", value=card['notes'], inline=False))
 
       decks = card['decks']
-      if len(decks) > 1:
-        other_decks = f"This card appears in {len(decks)} decks: {', '.join([deck['name'] for deck in decks])}"
-      else:
-        other_decks = "This card is currently unique to this deck."
+
       fields.append(interactions.EmbedField(
         name="Decks", 
-        value=other_decks, 
+        value=get_other_decks(decks), 
         inline=False))
 
 
@@ -101,20 +108,16 @@ def make_deckcard_embed(card, idx):
       if card['notes']:
         fields.append(interactions.EmbedField(name="Notes", value=card['notes'], inline=False))
 
-      if len(decks) > 1:
-        other_decks = f"This card appears in {len(decks)} decks: {', '.join([deck['name'] for deck in decks])}"
-      else:
-        other_decks = "This card is currently unique to this deck."
       fields.append(interactions.EmbedField(
         name="Decks", 
-        value=other_decks, 
+        value=get_other_decks(decks), 
         inline=False))
 
       image_url = deck['image']
 
       return interactions.Embed(
         title=card["title"], 
-        description=get_card_description(card),
+        description=f"**{get_deck_link(deck)}**\n{get_card_description(card)}",
         url=f"https://unmatched.cards/umdb/cards/{card['slug']}",
         author=interactions.EmbedAuthor(name="UmDb", url="https://unmatched.cards/umdb"),
         fields=fields,
@@ -142,7 +145,7 @@ def make_deck_select(card):
     interactions.SelectOption(
       label=deck['name'],
       value=f"{card['slug']},{idx}",
-      description=get_deck_description(deck),
+      description=get_deck_specifics(deck),
     ) for idx, deck in enumerate(card['decks'])
   ]
 
