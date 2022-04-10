@@ -11,6 +11,9 @@ DECK_SELECT_ID = 'deck_select'
 
 bot = interactions.Client(token=TOKEN)
 
+def get_author_embed():
+  return interactions.EmbedAuthor(name="UmDb", url="https://unmatched.cards/umdb")
+
 def search_cards(filter):
   params={'filter': filter}
   r = requests.get('https://unmatched.cards/api/db/cards', params=params)
@@ -19,6 +22,11 @@ def search_cards(filter):
 def get_card(slug):
   r = requests.get(f'https://unmatched.cards/api/db/cards/{slug}')
   return r.json()
+
+def search_decks(filter):
+    params={'filter': filter}
+    r = requests.get('https://unmatched.cards/api/db/decks', params=params)
+    return r.json()['decks']
 
 def get_card_description(card):
   first_letter = card['type'][0].lower()
@@ -78,7 +86,7 @@ def make_card_embed(card):
         title=card["title"], 
         description=get_card_description(card),
         url=f"https://unmatched.cards/umdb/cards/{card['slug']}",
-        author=interactions.EmbedAuthor(name="UmDb", url="https://unmatched.cards/umdb"),
+        author=get_author_embed(),
         fields=fields,
         color=get_colour(card),
       )
@@ -119,11 +127,47 @@ def make_deckcard_embed(card, idx):
         title=card["title"], 
         description=f"**{get_deck_link(deck)}**\n{get_card_description(card)}",
         url=f"https://unmatched.cards/umdb/cards/{card['slug']}",
-        author=interactions.EmbedAuthor(name="UmDb", url="https://unmatched.cards/umdb"),
+        author=get_author_embed(),
         fields=fields,
         image={'url': image_url} if image_url else None,
         color=get_colour(card),
       )
+
+def make_deck_embed(deck):
+  fields = []
+
+  for hero in deck['heroes']:
+    if len(deck['heroes']) > 1:
+      fields.append(interactions.EmbedField(name="Hero Name", value=hero['name'], inline=False))
+
+    fields.append(interactions.EmbedField(name="Attack Type", value=hero['attack_type'].title(), inline=True))
+    fields.append(interactions.EmbedField(name="HP", value=hero['hp'], inline=True))
+    if hero['quantity'] > 1:
+      fields.append(interactions.EmbedField(name="Quantity", value=hero['quantity'], inline=True))
+  
+  fields.append(interactions.EmbedField(name="Move", value=deck['movement'], inline=False))
+
+  for sidekick in deck['sidekicks']:
+    fields.append(interactions.EmbedField(name="Sidekick Name", value=sidekick['name'], inline=False))
+    
+    fields.append(interactions.EmbedField(name="Sidekick Attack Type", value=sidekick['attack_type'].title(), inline=True))
+    fields.append(interactions.EmbedField(name="Sidekick HP", value=sidekick['hp'], inline=True))
+    if sidekick['quantity'] > 1:
+      fields.append(interactions.EmbedField(name="Sidekick Quantity", value=sidekick['quantity'], inline=True))
+
+  fields.append(interactions.EmbedField(name="Special Ability", value=deck['special'], inline=False))
+
+  if deck['notes']:
+    fields.append(interactions.EmbedField(name="Notes", value=deck['notes'], inline=False))
+
+
+  return interactions.Embed(
+    title=deck['name'],
+    description=deck['set'],
+    url=f"https://unmatched.cards/umdb/decks/{deck['slug']}",
+    author=get_author_embed(),
+    fields=fields,
+  )
 
 def make_card_select(cards):
   select_options = [
@@ -198,14 +242,37 @@ async def select_card(ctx, value):
   ]
 )
 async def card(ctx, title):
-    card_name=title
-    cards = search_cards(card_name)
-    if len(cards) > 1:
-     await ctx.send("Multiple matching cards found", components=make_card_select(cards), ephemeral=True)
-    elif len(cards) == 1:
-      card = cards[0]
-      await _send_card_or_deck_select(ctx, card)
-    else:
-      await ctx.send(f'No cards found for search term: {card_name}', ephemeral=True)
+  card_name=title
+  cards = search_cards(card_name)
+  if len(cards) > 1:
+    await ctx.send("Multiple matching cards found", components=make_card_select(cards), ephemeral=True)
+  elif len(cards) == 1:
+    card = cards[0]
+    await _send_card_or_deck_select(ctx, card)
+  else:
+    await ctx.send(f'No cards found for search term: {card_name}', ephemeral=True)
+
+@bot.command(
+  name="umdeck", 
+  description="Search for an Unmatched deck in UmDb",
+  options = [
+    interactions.Option(
+      name="name",
+      description="Deck name",
+      type=interactions.OptionType.STRING,
+      required=True,
+    ),
+  ]
+)
+async def deck(ctx, name):
+  decks = search_decks(name)
+  if len(decks) == 1:
+    deck = decks[0]
+    embed = make_deck_embed(deck)
+    await ctx.send(embeds=embed)
+  elif len(decks) > 1:
+    await ctx.send(f'Multiple decks found. Selector not yet implemented', ephemeral=True)
+  else:
+    await ctx.send(f'No decks found for search term: {name}', ephemeral=True)
 
 bot.start()
