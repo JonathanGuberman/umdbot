@@ -235,18 +235,6 @@ async def select_card(ctx, value):
     embed = make_card_embed(card) if idx < 0 else make_deckcard_embed(card, idx)
     await ctx.send(embeds=embed)
 
-@bot.command(
-  name="umcard", 
-  description="Search for an Unmatched card in UmDb",
-  options = [
-    interactions.Option(
-      name="title",
-      description="Card title",
-      type=interactions.OptionType.STRING,
-      required=True,
-    ),
-  ]
-)
 async def card(ctx, title):
   card_name=title
   cards = search_cards(card_name)
@@ -258,18 +246,6 @@ async def card(ctx, title):
   else:
     await ctx.send(f'No cards found for search term: {card_name}', ephemeral=True)
 
-@bot.command(
-  name="umdeck", 
-  description="Search for an Unmatched deck in UmDb",
-  options = [
-    interactions.Option(
-      name="name",
-      description="Deck name",
-      type=interactions.OptionType.STRING,
-      required=True,
-    ),
-  ]
-)
 async def deck(ctx, name):
   decks = search_decks(name)
   if len(decks) == 1:
@@ -277,8 +253,46 @@ async def deck(ctx, name):
     embed = make_deck_embed(deck)
     await ctx.send(embeds=embed)
   elif len(decks) > 1:
-    await ctx.send(f'Multiple decks found. Selector not yet implemented', ephemeral=True)
+    await ctx.send(f'Multiple decks found. Please be more specific.', ephemeral=True)
   else:
     await ctx.send(f'No decks found for search term: {name}', ephemeral=True)
+
+@bot.command(
+  name="umdb",
+  description="Search UmDb",
+  options=[
+    interactions.Option(
+      name="card",
+      description="Search UmDb for a card",
+      type=interactions.OptionType.SUB_COMMAND,
+      options=[
+        interactions.Option(
+          name="card_title",
+          description="Title to search",
+          type=interactions.OptionType.STRING,
+          required=True,
+        ),
+      ],
+    ),
+    interactions.Option(
+        name="deck",
+        description="Search UmDb for a deck",
+        type=interactions.OptionType.SUB_COMMAND,
+        options=[
+          interactions.Option(
+            name="deck_name",
+            description="Deck name to search",
+            type=interactions.OptionType.STRING,
+            required=True,
+          ),
+        ],
+    ),
+  ],
+)
+async def cmd(ctx: interactions.CommandContext, sub_command: str, deck_name=None, card_title=None):
+    if sub_command == "card":
+      await card(ctx, card_title)
+    elif sub_command == "deck":
+      await deck(ctx, deck_name)
 
 bot.start()
