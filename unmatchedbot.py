@@ -1,85 +1,115 @@
 import os
 import requests
 
-import discord
-from discord.ext import commands
-from discord_components import DiscordComponents, Select, SelectOption
-from discord_slash import SlashCommand, SlashContext
+import interactions
 from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+CARD_SELECT_ID = 'card_select'
 
-bot = commands.Bot(command_prefix='!')
-DiscordComponents(bot)
+bot = interactions.Client(token=TOKEN)
 
-def get_cards(filter):
+def search_cards(filter):
   params={'filter': filter}
   r = requests.get('https://unmatched.cards/api/db/cards', params=params)
   return r.json()['cards']
 
-def make_card_embed(card):
-      embed=discord.Embed(
-        title=card["title"], 
-        description=f"{card['type']} {card['value']}",
-        url=f"https://unmatched.cards/umdb/cards/{card['slug']}",
-      )
-      embed.set_author(name="UmDb", url="https://unmatched.cards/umdb")
+def get_card(slug):
+  r = requests.get(f'https://unmatched.cards/api/db/cards/{slug}')
+  return r.json()
 
+def get_card_description(card):
+  first_letter = card['type'][0].lower()
+  if first_letter == 's':
+    return 'Scheme'
+  return f"{card['type'].title()} {card['value']}"
+
+def get_colour(card):
+  first_letter = card['type'][0].lower()
+  color_map = {
+    'd': 0x2c76ac,
+    'a': 0xdc3034,
+    'v': 0x6c4e8d,
+    's': 0xfcbd71,
+  }
+  return color_map.get(first_letter, 0xf7eadb)
+
+def make_card_embed(card):
+      fields = []
       if card['basicText']:
-        embed.add_field(name="Text", value=card['basicText'], inline=False)
+        fields.append(interactions.EmbedField(name="Text", value=card['basicText'], inline=False))
       
       if card['immediateText']:
-        embed.add_field(name="Immediately", value=card['immediateText'], inline=True)
+        fields.append(interactions.EmbedField(name="Immediately", value=card['immediateText'], inline=True))
 
       if card['duringText']:
-        embed.add_field(name="During combat", value=card['duringText'], inline=True)
+        fields.append(interactions.EmbedField(name="During combat", value=card['duringText'], inline=True))
       
       if card['afterText']:
-        embed.add_field(name="After combat", value=card['afterText'], inline=True)
+        fields.append(interactions.EmbedField(name="After combat", value=card['afterText'], inline=True))
 
       if card['notes']:
-        embed.add_field(name="Notes", value=card['notes'], inline=False)
+        fields.append(interactions.EmbedField(name="Notes", value=card['notes'], inline=False))
 
       image = card['decks'][0]['image']
+      thumbnail = None
       if image:
-        embed.set_thumbnail(url=card['decks'][0]['image'])
-      return embed
+        thumbnail = {'url': card['decks'][0]['image']}
 
-@bot.command()
-async def card(ctx, card_name):
-    cards = get_cards(card_name)
+      return interactions.Embed(
+        title=card["title"], 
+        description=get_card_description(card),
+        url=f"https://unmatched.cards/umdb/cards/{card['slug']}",
+        author=interactions.EmbedAuthor(name="UmDb", url="https://unmatched.cards/umdb"),
+        fields=fields,
+        thumbnail=thumbnail,
+        color=get_colour(card),
+      )
+
+def make_card_select(cards):
+  select_options = [
+    interactions.SelectOption(
+      label=card['title'],
+      value=card['slug'],
+      description=get_card_description(card),
+    ) for idx, card in enumerate(cards)
+  ]
+
+  return interactions.SelectMenu(
+    options=select_options,
+    placeholder="Choose a card",
+    custom_id=CARD_SELECT_ID,
+  )
+
+@bot.component(CARD_SELECT_ID)
+async def select_card(ctx, value):
+    card = get_card(value[0])
+    embed = make_card_embed(card)
+    await ctx.send(embeds=embed)
+
+@bot.command(
+  name="umcard", 
+  description="Search for an Unmatched card in UmDb",
+  options = [
+    interactions.Option(
+      name="title",
+      description="Card title",
+      type=interactions.OptionType.STRING,
+      required=True,
+    ),
+  ]
+)
+async def card(ctx, title):
+    card_name=title
+    cards = search_cards(card_name)
     if len(cards) > 1:
-      card = next((card for card in cards if card['title'].casefold() == card_name.casefold()), None)
-      if card:
-        embed = make_card_embed(card)
-        await ctx.send(embed=embed)
-      else:
-        # response = f'I found {len(cards)} cards matching those terms:\n'
-        # response += '\n'.join([card['title'] for card in cards])
-        # await ctx.send(response)
-        await ctx.send(
-        "I found multiple matches:",
-          components = [
-            Select(
-              placeholder = "Choose a card",
-              options = [
-                  SelectOption(label = card['title'], value = idx)
-                  for idx, card in enumerate(cards)
-              ]
-            )
-          ]
-        )
-        interaction = await bot.wait_for("select_option")
-      
-        idx = int(interaction.values[0])
-        await interaction.send(embed = make_card_embed(cards[idx]), ephemeral=False)
+     await ctx.send("Multiple matching cards found", components=make_card_select(cards), ephemeral=True)
     elif len(cards) == 1:
       card = cards[0]
       embed = make_card_embed(card)
-      await ctx.send(embed=embed)
-      # response = f'**{card["title"]}**\n{card["type"]} {card["value"]}'
+      await ctx.send(embeds=embed)
     else:
-      await ctx.send(f'No cards found for search term: {card_name}')
+      await ctx.send(f'No cards found for search term: {card_name}', ephemeral=True)
 
-bot.run(TOKEN)
+bot.start()
