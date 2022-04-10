@@ -1,3 +1,4 @@
+import logging
 import os
 import requests
 
@@ -6,8 +7,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+LOGLEVEL = os.getenv('LOG_LEVEL', 'INFO')
 CARD_SELECT_ID = 'card_select'
 DECK_SELECT_ID = 'deck_select'
+
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', 
+  level=getattr(logging, LOGLEVEL.upper()),
+  datefmt='%Y-%m-%d %H:%M:%S')
 
 bot = interactions.Client(token=TOKEN)
 
