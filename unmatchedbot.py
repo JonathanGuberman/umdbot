@@ -52,10 +52,7 @@ def make_card_embed(card):
       if card['notes']:
         fields.append(interactions.EmbedField(name="Notes", value=card['notes'], inline=False))
 
-      image = card['decks'][0]['image']
-      thumbnail = None
-      if image:
-        thumbnail = {'url': card['decks'][0]['image']}
+      image_url = card['decks'][0]['image']
 
       return interactions.Embed(
         title=card["title"], 
@@ -63,7 +60,7 @@ def make_card_embed(card):
         url=f"https://unmatched.cards/umdb/cards/{card['slug']}",
         author=interactions.EmbedAuthor(name="UmDb", url="https://unmatched.cards/umdb"),
         fields=fields,
-        thumbnail=thumbnail,
+        image={'url': image_url} if image_url else None,
         color=get_colour(card),
       )
 
