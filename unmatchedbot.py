@@ -45,13 +45,13 @@ def make_card_embed(card):
         fields.append(interactions.EmbedField(name="Text", value=card['basicText'], inline=False))
       
       if card['immediateText']:
-        fields.append(interactions.EmbedField(name="Immediately", value=card['immediateText'], inline=True))
+        fields.append(interactions.EmbedField(name="Immediately", value=card['immediateText'], inline=False))
 
       if card['duringText']:
-        fields.append(interactions.EmbedField(name="During combat", value=card['duringText'], inline=True))
+        fields.append(interactions.EmbedField(name="During combat", value=card['duringText'], inline=False))
       
       if card['afterText']:
-        fields.append(interactions.EmbedField(name="After combat", value=card['afterText'], inline=True))
+        fields.append(interactions.EmbedField(name="After combat", value=card['afterText'], inline=False))
 
       if card['notes']:
         fields.append(interactions.EmbedField(name="Notes", value=card['notes'], inline=False))
@@ -90,13 +90,13 @@ def make_deckcard_embed(card, idx):
         fields.append(interactions.EmbedField(name="Text", value=card['basicText'], inline=False))
       
       if card['immediateText']:
-        fields.append(interactions.EmbedField(name="Immediately", value=card['immediateText'], inline=True))
+        fields.append(interactions.EmbedField(name="Immediately", value=card['immediateText'], inline=False))
 
       if card['duringText']:
-        fields.append(interactions.EmbedField(name="During combat", value=card['duringText'], inline=True))
+        fields.append(interactions.EmbedField(name="During combat", value=card['duringText'], inline=False))
       
       if card['afterText']:
-        fields.append(interactions.EmbedField(name="After combat", value=card['afterText'], inline=True))
+        fields.append(interactions.EmbedField(name="After combat", value=card['afterText'], inline=False))
 
       if card['notes']:
         fields.append(interactions.EmbedField(name="Notes", value=card['notes'], inline=False))
