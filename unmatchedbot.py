@@ -9,7 +9,8 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 LOGLEVEL = os.getenv('LOG_LEVEL', 'INFO')
 CARD_SELECT_ID = 'card_select'
-DECK_SELECT_ID = 'deck_select'
+DECK_SELECT_FOR_CARD_ID = 'deck_select_for_card'
+DECK_SELECT_ID = 'deck_select_id'
 
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', 
   level=getattr(logging, LOGLEVEL.upper()),
@@ -27,6 +28,10 @@ def search_cards(filter):
 
 def get_card(slug):
   r = requests.get(f'https://unmatched.cards/api/db/cards/{slug}')
+  return r.json()
+
+def get_deck(slug):
+  r = requests.get(f'https://unmatched.cards/api/db/decks/{slug}')
   return r.json()
 
 def search_decks(filter):
@@ -146,22 +151,33 @@ def make_deck_embed(deck):
     if len(deck['heroes']) > 1:
       fields.append(interactions.EmbedField(name="Hero Name", value=hero['name'], inline=False))
 
-    fields.append(interactions.EmbedField(name="Attack Type", value=hero['attack_type'].title(), inline=True))
-    fields.append(interactions.EmbedField(name="HP", value=hero['hp'], inline=True))
+    if hero['attack_type']:
+      fields.append(interactions.EmbedField(name="Attack Type", value=hero['attack_type'].title(), inline=True))
+    
+    if hero['hp']:
+      fields.append(interactions.EmbedField(name="HP", value=hero['hp'], inline=True))
+    
     if hero['quantity'] > 1:
       fields.append(interactions.EmbedField(name="Quantity", value=hero['quantity'], inline=True))
   
-  fields.append(interactions.EmbedField(name="Move", value=deck['movement'], inline=False))
+  if deck['movement']:
+    fields.append(interactions.EmbedField(name="Move", value=deck['movement'], inline=False))
 
   for sidekick in deck['sidekicks']:
-    fields.append(interactions.EmbedField(name="Sidekick Name", value=sidekick['name'], inline=False))
+    if sidekick['name']:
+      fields.append(interactions.EmbedField(name="Sidekick Name", value=sidekick['name'], inline=False))
     
-    fields.append(interactions.EmbedField(name="Sidekick Attack Type", value=sidekick['attack_type'].title(), inline=True))
-    fields.append(interactions.EmbedField(name="Sidekick HP", value=sidekick['hp'], inline=True))
-    if sidekick['quantity'] > 1:
+    if sidekick['attack_type']:
+      fields.append(interactions.EmbedField(name="Sidekick Attack Type", value=sidekick['attack_type'].title(), inline=True))
+    
+    if sidekick['hp']:
+      fields.append(interactions.EmbedField(name="Sidekick HP", value=sidekick['hp'], inline=True))
+    
+    if sidekick['quantity'] and sidekick['quantity'] > 1:
       fields.append(interactions.EmbedField(name="Sidekick Quantity", value=sidekick['quantity'], inline=True))
 
-  fields.append(interactions.EmbedField(name="Special Ability", value=deck['special'], inline=False))
+  if deck['special']:
+    fields.append(interactions.EmbedField(name="Special Ability", value=deck['special'], inline=False))
 
   if deck['notes']:
     fields.append(interactions.EmbedField(name="Notes", value=deck['notes'], inline=False))
@@ -190,7 +206,7 @@ def make_card_select(cards):
     custom_id=CARD_SELECT_ID,
   )
 
-def make_deck_select(card):
+def make_deck_select_for_card(card):
   select_options = [
     interactions.SelectOption(
       label=deck['name'],
@@ -210,8 +226,28 @@ def make_deck_select(card):
   return interactions.SelectMenu(
     options=select_options,
     placeholder="Choose a deck",
+    custom_id=DECK_SELECT_FOR_CARD_ID,
+  )
+
+def make_deck_select(decks):
+  select_options = [
+    interactions.SelectOption(
+      label=deck['name'],
+      value=deck['slug'],
+    ) for deck in decks
+  ]
+
+  return interactions.SelectMenu(
+    options=select_options,
+    placeholder="Choose a deck",
     custom_id=DECK_SELECT_ID,
   )
+
+@bot.component(DECK_SELECT_ID)
+async def select_deck(ctx, value):
+  deck = get_deck(value[0])
+  embed = make_deck_embed(deck)
+  await ctx.send(embeds=embed)
 
 @bot.component(CARD_SELECT_ID)
 async def select_card(ctx, value):
@@ -224,10 +260,10 @@ async def _send_card_or_deck_select(ctx, card):
     embed = make_deckcard_embed(card, 0)
     await ctx.send(embeds=embed)
   else:
-    await ctx.send("Which deck version?", components=make_deck_select(card), ephemeral=True)
+    await ctx.send("Which deck version?", components=make_deck_select_for_card(card), ephemeral=True)
 
 
-@bot.component(DECK_SELECT_ID)
+@bot.component(DECK_SELECT_FOR_CARD_ID)
 async def select_card(ctx, value):
     slug, idx = value[0].split(',')
     card = get_card(slug)
@@ -253,7 +289,7 @@ async def deck(ctx, name):
     embed = make_deck_embed(deck)
     await ctx.send(embeds=embed)
   elif len(decks) > 1:
-    await ctx.send(f'Multiple decks found. Please be more specific.', ephemeral=True)
+    await ctx.send("Multiple matching decks found", components=make_deck_select(decks), ephemeral=True)
   else:
     await ctx.send(f'No decks found for search term: {name}', ephemeral=True)
 
