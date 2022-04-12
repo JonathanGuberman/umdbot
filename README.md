@@ -1,4 +1,4 @@
-# UmDbot - an Unmatched Discord bot
+# UmDbot: an Unmatched Discord bot
 
 UmDbot is a Discord bot that queries [UmDb](https://unmatched.cards/umdb)
 and displays nicely-formatted Unmatched data.
