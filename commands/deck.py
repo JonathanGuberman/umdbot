@@ -6,15 +6,19 @@ from .lib import get_author_embed
 DECK_SELECT_ID = 'deck_select_id'
 
 def get_deck(slug):
+  """Retrieve single deck with given slug from UmDb API."""
   r = requests.get(f'https://unmatched.cards/api/db/decks/{slug}')
   return r.json()
 
 def search_decks(filter):
-    params={'filter': filter}
-    r = requests.get('https://unmatched.cards/api/db/decks', params=params)
-    return r.json()['decks']
+  """Search UmDb API deck endpoint for the given filter."""
+
+  params={'filter': filter}
+  r = requests.get('https://unmatched.cards/api/db/decks', params=params)
+  return r.json()['decks']
 
 def make_deck_embed(deck):
+  """Makes the Discord embed for a deck."""
   fields = []
 
   for hero in deck['heroes']:
@@ -62,6 +66,7 @@ def make_deck_embed(deck):
   )
 
 def make_deck_select(decks):
+  """Make Discord select for multiple decks."""
   select_options = [
     interactions.SelectOption(
       label=deck['name'],
@@ -76,11 +81,13 @@ def make_deck_select(decks):
   )
 
 async def select_deck(ctx, value):
+  """Handler for selecting a deck."""
   deck = get_deck(value[0])
   embed = make_deck_embed(deck)
   await ctx.send(embeds=embed)
 
 async def deck(ctx, name):
+  """Handler for deck subcommand."""
   decks = search_decks(name)
   if len(decks) == 1:
     deck = decks[0]

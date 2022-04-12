@@ -11,11 +11,13 @@ BOARD_SELECT_ID = 'board_select_id'
 #   return r.json()
 
 def search_boards(filter):
-    params={'filter': filter}
-    r = requests.get('https://unmatched.cards/api/db/boards', params=params)
-    return r.json()['boards']
+  """Search UmDb API board endpoint for the given filter."""
+  params={'filter': filter}
+  r = requests.get('https://unmatched.cards/api/db/boards', params=params)
+  return r.json()['boards']
 
 def make_board_embed(board):
+  """Create the Discord embed to display for a board."""
   fields = []
 
   if board['max_players']:
@@ -40,6 +42,7 @@ def make_board_embed(board):
   )
 
 def make_board_select(boards):
+  """Create the Discord Select for choosing from multiple boards."""
   select_options = [
     interactions.SelectOption(
       label=board['name'],
@@ -54,11 +57,13 @@ def make_board_select(boards):
   )
 
 async def select_board(ctx, value):
+  """Handler for board selection event."""
   board = search_boards(value[0])
   embed = make_board_embed(board[0])
   await ctx.send(embeds=embed)
 
 async def board(ctx, name):
+  """Handler for board subcommand."""
   boards = search_boards(name)
   if len(boards) == 1:
     board = boards[0]

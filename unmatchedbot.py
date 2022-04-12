@@ -1,6 +1,5 @@
 import logging
 import os
-import requests
 
 import interactions
 from dotenv import load_dotenv
@@ -70,11 +69,18 @@ bot.component(BOARD_SELECT_ID)(select_board)
   ],
 )
 async def cmd(ctx: interactions.CommandContext, sub_command: str, board_name=None, deck_name=None, card_title=None):
+    """ Top-level command which delegates to subcommands.
+    
+    The default None arguments seem to be required, despite the interaction.py
+    docs implying otherwise.
+    """
     if sub_command == "card":
       await card(ctx, card_title)
     elif sub_command == "deck":
       await deck(ctx, deck_name)
     elif sub_command == 'board':
       await board(ctx, board_name)
+    else:
+      logging.error(f"Unknown subcommand '{sub_command}'. This shouldn't happen.")
 
 bot.start()
